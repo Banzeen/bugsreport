@@ -86,3 +86,16 @@ Analyze the following report section carefully and extract insights accordingly:
 
 {document}
 """)
+
+                    chunk_chain = chunk_prompt | llm | parser
+                    chunk_summary = chunk_chain.invoke({"document": chunk.page_content})
+                    chunk_summaries.append(chunk_summary)
+
+            except Exception as e:
+                st.error(f"Error summarizing chunks: {e}")
+                st.stop()
+
+        
+        with st.spinner("Creating final summary..."):
+            try:
+                combined_summaries = "\n".join(chunk_summaries)
