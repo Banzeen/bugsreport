@@ -11,33 +11,33 @@ import os
 load_dotenv()
 
 
-st.title(" Bug Report Analyzer")
+st.set_page_config(page_title="Bug Report Analyzer", page_icon="🛡️", layout="wide")
+
+st.title("🛡️ Bug Report Analyzer")
 st.divider()
-st.markdown("## Upload and Analyze Reports")
+st.markdown("## Upload and Analyze Security Reports using AI")
+
 
 uploaded_file = st.file_uploader(
-    "# Upload a TXT, PDF, or CSV file", type=["txt", "pdf", "csv"]
+    "### 📤 Upload a TXT, PDF, or CSV file", 
+    type=["txt", "pdf", "csv"]
 )
-
 
 
 llm = ChatOpenAI(model="gpt-4o-mini")
 parser = StrOutputParser()
 
-prompt_template = ChatPromptTemplate.from_template(
-    "Summarize the following document:\n{document}"
-)
-
-chain = prompt_template | llm | parser
 
 if uploaded_file is not None:
-    with st.spinner("📄 Processing file..."):
+    with st.spinner(" Processing file..."):
         try:
             temp_file_path = uploaded_file.name
 
+       
             with open(temp_file_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
 
+   
             if uploaded_file.type == "text/plain":
                 loader = TextLoader(temp_file_path)
             elif uploaded_file.type == "text/csv":
@@ -45,33 +45,42 @@ if uploaded_file is not None:
             elif uploaded_file.type == "application/pdf":
                 loader = PyPDFLoader(temp_file_path)
             else:
-                st.error("Unsupported file type!")
+                st.error(" Unsupported file type!")
                 st.stop()
 
-            
+        
             doc = loader.load()
 
-          
+         
             text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
             chunks = text_splitter.split_documents(doc)
 
-            st.success(f"File uploaded and divided into {len(chunks)} chunks.")
+        
+            st.session_state["chunks"] = chunks
+
+            st.success(f" File uploaded successfully and divided into {len(chunks)} chunks.")
 
         except Exception as e:
             st.error(f"Error loading file: {e}")
             st.stop()
 
-    
-    if st.button("Analyze"):
-        container = st.empty()
-        chunk_summaries = []
 
-        with st.spinner("Analyzing report chunks..."):
-            try:
-                for i, chunk in enumerate(chunks):
-                    st.write(f"Processing chunk {i+1}/{len(chunks)}...")
+if st.button("🔍 Analyze"):
+    if "chunks" not in st.session_state:
+        st.error(" Please upload and process a file first.")
+        st.stop()
 
-                    chunk_prompt = ChatPromptTemplate.from_template("""
+    chunks = st.session_state["chunks"]
+    container = st.empty()
+    chunk_summaries = []
+
+ 
+    with st.spinner(" Analyzing report chunks..."):
+        try:
+            for i, chunk in enumerate(chunks):
+                st.write(f"Processing chunk {i+1}/{len(chunks)}...")
+
+                chunk_prompt = ChatPromptTemplate.from_template("""
 You are a highly skilled **Cybersecurity AI Analyst** specialized in vulnerability triage and technical threat analysis.
 
 Your task is to analyze the following section of a bug report and provide a structured summary with:
@@ -87,19 +96,20 @@ Analyze the following report section carefully and extract insights accordingly:
 {document}
 """)
 
-                    chunk_chain = chunk_prompt | llm | parser
-                    chunk_summary = chunk_chain.invoke({"document": chunk.page_content})
-                    chunk_summaries.append(chunk_summary)
+                chunk_chain = chunk_prompt | llm | parser
+                chunk_summary = chunk_chain.invoke({"document": chunk.page_content})
+                chunk_summaries.append(chunk_summary)
 
-            except Exception as e:
-                st.error(f"Error summarizing chunks: {e}")
-                st.stop()
+        except Exception as e:
+            st.error(f" Error summarizing chunks: {e}")
+            st.stop()
 
-        
-        with st.spinner("Creating final summary..."):
-            try:
-                combined_summaries = "\n".join(chunk_summaries)
-                final_prompt = ChatPromptTemplate.from_template("""
+    
+    with st.spinner(" Creating final summary..."):
+        try:
+            combined_summaries = "\n".join(chunk_summaries)
+
+            final_prompt = ChatPromptTemplate.from_template("""
 You are a **Senior Security Engineer** preparing a consolidated professional report
 based on multiple vulnerability summaries analyzed by junior analysts.
 
@@ -132,14 +142,16 @@ Here are the summarized chunks you should combine:
 {document}
 """)
 
+            final_chain = final_prompt | llm | parser
+            final_summary = final_chain.invoke({"document": combined_summaries})
 
-                final_chain = final_prompt | llm | parser
-                final_summary = final_chain.invoke({"document": combined_summaries})
+          
+            st.subheader("🧾 Final Consolidated Security Report")
+            container.write(final_summary)
 
-                st.subheader(" Final Summary")
-                container.write(final_summary)
+        
 
-            except Exception as e:
-                print("Error creating final summary", e)
-                st.error(f"Error creating final summary: {e}")
+            st.success(" Analysis completed successfully!")
 
+        except Exception as e:
+            st.error(f" Error creating final summary: {e}")
