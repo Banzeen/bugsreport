@@ -99,3 +99,47 @@ Analyze the following report section carefully and extract insights accordingly:
         with st.spinner("Creating final summary..."):
             try:
                 combined_summaries = "\n".join(chunk_summaries)
+                final_prompt = ChatPromptTemplate.from_template("""
+You are a **Senior Security Engineer** preparing a consolidated professional report
+based on multiple vulnerability summaries analyzed by junior analysts.
+
+Your goal is to merge and refine the following summaries into a single, coherent report
+with the following structured sections:
+
+---
+### 🧩 Vulnerability Overview
+Summarize all unique vulnerabilities mentioned and categorize them (e.g., Injection, Access Control, Logic Flaw).
+
+### 🔍 Root Cause Analysis
+Describe the common technical reasons behind these vulnerabilities and any patterns observed.
+
+### ⚠️ Severity Assessment
+Provide an overall severity rating (Low / Medium / High / Critical) for the entire report,
+justifying your reasoning.
+
+### 🧠 Exploitation Scenarios
+Briefly explain how an attacker might exploit the identified vulnerabilities.
+
+### 🛡️ Remediation Recommendations
+Provide actionable recommendations for developers or security engineers to fix the issues and prevent recurrence.
+
+### 📄 Executive Summary
+Write a concise summary paragraph suitable for a management-level audience.
+
+---
+
+Here are the summarized chunks you should combine:
+{document}
+""")
+
+
+                final_chain = final_prompt | llm | parser
+                final_summary = final_chain.invoke({"document": combined_summaries})
+
+                st.subheader(" Final Summary")
+                container.write(final_summary)
+
+            except Exception as e:
+                print("Error creating final summary", e)
+                st.error(f"Error creating final summary: {e}")
+
